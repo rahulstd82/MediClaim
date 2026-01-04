@@ -951,39 +951,6 @@ def main():
     # Process button with enhanced validation
     process_button_disabled = not (st.session_state.policy_valid and st.session_state.bill_valid)
     
-    # Show quota status for free-tier monitoring
-    if st.session_state.policy_valid and st.session_state.bill_valid:
-        try:
-            # Create a temporary processor to check quota (without making API calls)
-            temp_processor = GeminiProcessor(GOOGLE_API_KEY)
-            quota_status = temp_processor.get_quota_status()
-            
-            # Display quota information
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric(
-                    label="Daily API Usage",
-                    value=f"{quota_status['daily_used']}/{quota_status['daily_limit']}",
-                    help="Number of API requests used today"
-                )
-            with col2:
-                st.metric(
-                    label="Remaining Requests",
-                    value=str(quota_status['remaining']),
-                    help="API requests remaining for today"
-                )
-            with col3:
-                usage_color = "🟢" if quota_status['usage_percentage'] < 50 else "🟡" if quota_status['usage_percentage'] < 80 else "🔴"
-                st.metric(
-                    label="Usage Level",
-                    value=f"{usage_color} {quota_status['usage_percentage']:.1f}%",
-                    help="Percentage of daily quota used"
-                )
-                
-        except Exception:
-            # Don't show quota if there's an error (e.g., invalid API key)
-            pass
-    
     # Processing options
     if st.session_state.policy_valid and st.session_state.bill_valid:
         st.subheader("⚙️ Processing Options")

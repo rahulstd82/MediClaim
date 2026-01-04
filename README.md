@@ -121,9 +121,8 @@ This application is optimized for Google Gemini's free tier:
 
 - **File Size Limit**: 20MB (configurable)
 - **Rate Limiting**: 2-second minimum interval between API requests
-- **Daily Quota**: 1,000 requests per day with usage monitoring
 - **Conservative Retries**: Maximum 2 retry attempts to save quota
-- **Real-time Monitoring**: Quota usage display in the UI
+- **Optimized Processing**: Efficient prompts and token usage
 
 ## 🏗️ Project Structure
 

@@ -59,12 +59,9 @@ class GeminiProcessor:
         self.base_delay = 3.0  # Increased delay to be more conservative with rate limits
         self.request_timeout = 20  # Shorter timeout for faster failure detection
         
-        # Rate limiting tracking - more conservative
+        # Rate limiting tracking - basic rate limiting only
         self.last_request_time = 0
-        self.min_request_interval = 2.0  # Increased to 2 seconds between requests
-        self.daily_request_count = 0
-        self.daily_request_limit = 1000  # Reduced daily limit for better quota management
-        self.request_reset_time = 0
+        self.min_request_interval = 2.0  # 2 seconds between requests
     
     def process_documents(self, policy_file, bill_file) -> ClaimData:
         """
@@ -265,48 +262,19 @@ class GeminiProcessor:
             else:
                 raise RuntimeError(f"Document processing failed: {str(e)}")
     
-    def _check_daily_quota(self):
-        """
-        Check if we're approaching daily quota limits.
-        Reset counter if it's a new day.
-        """
-        current_time = time.time()
-        
-        # Reset daily counter if it's a new day (24 hours since last reset)
-        if current_time - self.request_reset_time > 86400:  # 24 hours in seconds
-            self.daily_request_count = 0
-            self.request_reset_time = current_time
-        
-        # Check if approaching daily limit
-        if self.daily_request_count >= self.daily_request_limit:
-            raise RuntimeError(
-                f"Daily API request limit reached ({self.daily_request_limit} requests). "
-                f"Please wait until tomorrow or upgrade to a paid plan for higher limits."
-            )
-        
-        # Warn when approaching limit
-        if self.daily_request_count >= self.daily_request_limit * 0.8:
-            remaining = self.daily_request_limit - self.daily_request_count
-            st.warning(f"⚠️ Approaching daily API limit. {remaining} requests remaining today.")
-    
     def _enforce_rate_limit(self):
         """
-        Enforce rate limiting to stay within free-tier limits.
-        Ensures minimum interval between API requests and checks daily quota.
+        Enforce basic rate limiting between API requests.
         """
-        # Check daily quota first
-        self._check_daily_quota()
-        
         current_time = time.time()
         time_since_last_request = current_time - self.last_request_time
         
         if time_since_last_request < self.min_request_interval:
             sleep_time = self.min_request_interval - time_since_last_request
-            st.info(f"⏳ Rate limiting: waiting {sleep_time:.1f}s to stay within free-tier limits...")
+            st.info(f"⏳ Rate limiting: waiting {sleep_time:.1f}s between requests...")
             time.sleep(sleep_time)
         
         self.last_request_time = time.time()
-        self.daily_request_count += 1
     
     def _make_api_call_with_retry(self, content_parts, max_retries: int = None, base_delay: float = None):
         """
@@ -1236,31 +1204,6 @@ EXTRACT EVERY SINGLE ITEM - NO EXCEPTIONS - MAXIMUM PRECISION!"""
                 return False
         
         return True
-    
-    def get_quota_status(self) -> Dict[str, Any]:
-        """
-        Get current quota usage status for display.
-        
-        Returns:
-            Dictionary with quota information
-        """
-        current_time = time.time()
-        
-        # Reset daily counter if it's a new day
-        if current_time - self.request_reset_time > 86400:
-            self.daily_request_count = 0
-            self.request_reset_time = current_time
-        
-        usage_percentage = (self.daily_request_count / self.daily_request_limit) * 100
-        remaining_requests = self.daily_request_limit - self.daily_request_count
-        
-        return {
-            "daily_used": self.daily_request_count,
-            "daily_limit": self.daily_request_limit,
-            "remaining": remaining_requests,
-            "usage_percentage": usage_percentage,
-            "reset_time": self.request_reset_time + 86400  # Next reset time
-        }
     
     def test_api_connection(self) -> Tuple[bool, str]:
         """
